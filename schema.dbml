@@ -1,0 +1,24 @@
+// Схема MiniDB для https://dbdiagram.io (вставить в левое окно)
+Table datasets {
+  id int [pk]
+  name string
+  task string
+  size int
+}
+
+Table models {
+  id int [pk]
+  name string
+  version string
+}
+
+Table experiments {
+  id int [pk]
+  dataset_id int
+  model_id int
+  accuracy float
+  status string
+}
+
+Ref: experiments.dataset_id > datasets.id
+Ref: experiments.model_id > models.id

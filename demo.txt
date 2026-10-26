@@ -1,0 +1,33 @@
+# Сценарий защиты MiniDB. Запуск: ./minidb --script demo.txt
+# Работает на базе с тестовыми данными (seed.txt) и после себя оставляет её без изменений.
+
+# 1) база открыта, таблицы и схема на месте
+show tables
+describe experiments
+
+# 2) INSERT нескольких записей
+insert into experiments values (21, 1, 1, 0.93, completed)
+insert into experiments values (22, 2, 3, 0.81, running)
+
+# 3) SELECT: все записи таблицы и SELECT с условием / выбором столбцов
+select * from datasets
+select id, status, accuracy from experiments where accuracy > 0.9
+select * from experiments where status = running
+select * from experiments where id = 21
+
+# 4) UPDATE и DELETE
+update experiments set status = completed, accuracy = 0.8 where id = 22
+select * from experiments where id = 22
+delete from experiments where id = 21
+delete from experiments where id = 22
+
+# 5) ссылочная целостность: все три команды должны вернуть ошибку
+insert into experiments values (23, 99, 1, 0.5, failed)
+insert into experiments values (23, 1, 99, 0.5, failed)
+delete from datasets where id = 1
+
+# 6) JOIN: эксперименты вместе с названием датасета
+select * from experiments join datasets on experiments.dataset_id = datasets.id
+
+# 7) backup
+backup minidb_backup

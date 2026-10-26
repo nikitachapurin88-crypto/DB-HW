@@ -11,7 +11,7 @@ std::size_t column_size(ColumnType t) {
   case ColumnType::Int:
   case ColumnType::Float:
     return 8;
-  case ColumnType::Text:
+  case ColumnType::String:
     return kMaxTextBytes;
   }
   throw DatabaseError("unknown column type");
@@ -65,7 +65,7 @@ bool satisfies(int cmp, Op op) {
 }
 
 void check_comparable(const Column &col, const Value &v) {
-  const bool col_text = col.type == ColumnType::Text;
+  const bool col_text = col.type == ColumnType::String;
   const bool val_text = std::holds_alternative<std::string>(v);
   if (col_text != val_text) {
     throw TypeMismatch("condition value does not match column '" + col.name +
@@ -128,7 +128,8 @@ void Table::rebuild_index() {
       throw DatabaseError("read failed while building index");
     }
     if (rec[0] != 0) {
-      const auto key = std::get<std::int64_t>(decode_column(rec, schema_.pk));
+      const auto key =
+          std::get<std::int64_t>(decode_column(rec, schema_.pk));
       index_[key] = static_cast<std::uint64_t>(i) * record_size_;
     }
   }
@@ -157,10 +158,10 @@ Value Table::normalize_value(const Column &col, const Value &v) const {
       return v;
     }
     if (const auto *p = std::get_if<std::int64_t>(&v)) {
-      return static_cast<double>(*p);
+      return static_cast<double>(*p); // целое в float-столбец допускаем
     }
     break;
-  case ColumnType::Text:
+  case ColumnType::String:
     if (const auto *s = std::get_if<std::string>(&v)) {
       if (s->size() > kMaxTextBytes) {
         throw DatabaseError("text too long for column '" + col.name +
@@ -203,7 +204,7 @@ void Table::encode_column(Record &rec, std::size_t ci, const Value &v) const {
     std::memcpy(p, &x, sizeof(x));
     return;
   }
-  case ColumnType::Text: {
+  case ColumnType::String: {
     const auto &s = std::get<std::string>(v);
     std::memset(p, 0, kMaxTextBytes);
     std::memcpy(p, s.data(), s.size());
@@ -225,7 +226,7 @@ Value Table::decode_column(const Record &rec, std::size_t ci) const {
     std::memcpy(&x, p, sizeof(x));
     return x;
   }
-  case ColumnType::Text: {
+  case ColumnType::String: {
     std::size_t n = 0;
     while (n < kMaxTextBytes && p[n] != '\0') {
       ++n;
@@ -271,14 +272,16 @@ void Table::write_record(std::uint64_t offset, const Record &rec) {
   file_.clear();
   file_.seekp(static_cast<std::streamoff>(offset));
   file_.write(rec.data(), static_cast<std::streamsize>(rec.size()));
-  file_.flush();
+  file_.flush(); // данные должны пережить перезапуск сразу после операции
   if (!file_) {
     throw DatabaseError("write failed: " + path_.string());
   }
 }
 
-Table::Records
-Table::matching_records(const std::optional<Condition> &cond) const {
+// Записи, подходящие под условие. Условие «PK = число» идёт через индекс,
+// всё остальное через полный проход по файлу.
+Table::Records Table::matching_records(
+    const std::optional<Condition> &cond) const {
   Records out;
   std::size_t ci = 0;
   if (cond) {
@@ -350,8 +353,7 @@ std::size_t Table::update(const std::optional<Condition> &cond,
     if (ci == schema_.pk) {
       throw DatabaseError("primary key cannot be changed");
     }
-    prepared.emplace_back(ci,
-                          normalize_value(schema_.columns[ci], change.second));
+    prepared.emplace_back(ci, normalize_value(schema_.columns[ci], change.second));
   }
 
   auto matches = matching_records(cond);

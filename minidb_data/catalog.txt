@@ -1,0 +1,3 @@
+experiments;id:int;dataset_id:int;model_id:int;accuracy:float;status:text;fk=dataset_id>datasets.id;fk=model_id>models.id;pk=id
+models;id:int;name:text;version:text;pk=id
+datasets;id:int;name:text;task:text;size:int;pk=id

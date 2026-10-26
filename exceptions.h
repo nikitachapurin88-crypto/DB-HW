@@ -25,8 +25,8 @@ public:
 class InvalidName : public DatabaseError {
 public:
   explicit InvalidName(const std::string &name)
-      : DatabaseError("invalid name (allowed: letters, digits, '_'): '" + name +
-                      "'") {}
+      : DatabaseError("invalid name (allowed: letters, digits, '_'): '" +
+                      name + "'") {}
 };
 
 class CatalogError : public DatabaseError {
@@ -46,4 +46,10 @@ public:
       : DatabaseError("type mismatch: " + what) {}
 };
 
-#endif
+// Нарушение ссылочной целостности (внешнего ключа).
+class ForeignKeyError : public DatabaseError {
+public:
+  using DatabaseError::DatabaseError;
+};
+
+#endif // EXCEPTIONS_H

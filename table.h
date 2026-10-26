@@ -16,16 +16,30 @@
 
 // ---------- типы данных ----------
 
-enum class ColumnType { Int, Float, Text };
+enum class ColumnType { Int, Float, String };
 
 struct Column {
   std::string name;
   ColumnType type;
 };
 
+// Внешний ключ: столбец `column` этой таблицы ссылается на первичный ключ
+// `ref_column` таблицы `ref_table` (например dataset_id -> datasets.id).
+struct ForeignKey {
+  std::string column;
+  std::string ref_table;
+  std::string ref_column;
+};
+
 struct Schema {
   std::vector<Column> columns;
-  std::size_t pk = 0;
+  std::size_t pk = 0;          // индекс столбца первичного ключа (только Int)
+  std::vector<ForeignKey> fks; // внешние ключи; по умолчанию их нет
+
+  Schema() = default;
+  Schema(std::vector<Column> cols, std::size_t pk_index,
+         std::vector<ForeignKey> foreign_keys = {})
+      : columns(std::move(cols)), pk(pk_index), fks(std::move(foreign_keys)) {}
 };
 
 using Value = std::variant<std::int64_t, double, std::string>;
@@ -106,8 +120,8 @@ private:
   std::filesystem::path path_;
   Schema schema_;
   std::size_t record_size_ = 0;
-  std::vector<std::size_t> col_offsets_;
-  std::size_t record_count_ = 0;
+  std::vector<std::size_t> col_offsets_; // смещение столбца внутри записи
+  std::size_t record_count_ = 0;         // слотов в файле, включая удалённые
   mutable std::fstream file_;
   std::unordered_map<std::int64_t, std::uint64_t> index_;
 };

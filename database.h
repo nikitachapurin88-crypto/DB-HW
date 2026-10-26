@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "exceptions.h"
-#include "table.h"
+#include "table.h" // Table, Schema, Row, Condition, Changes, ResultSet
 
 class Database {
 public:
@@ -27,8 +27,11 @@ public:
 
   // CRUD (метод удаления назван remove: `delete` в C++ ключевое слово)
   void insert(const std::string &name, const Row &row);
+  // columns пуст = все столбцы; иначе только перечисленные, в этом порядке
   ResultSet select(const std::string &name,
-                   const std::optional<Condition> &cond = std::nullopt) const;
+                   const std::optional<Condition> &cond = std::nullopt,
+                   const std::vector<std::string> &columns = {}) const;
+  std::size_t row_count(const std::string &name) const;
   std::size_t update(const std::string &name,
                      const std::optional<Condition> &cond,
                      const Changes &changes);
@@ -54,9 +57,18 @@ private:
   void save_catalog() const;
   void load_catalog();
 
+  // каждый внешний ключ схемы должен ссылаться на PK существующей таблицы
+  void validate_foreign_keys(const Schema &schema) const;
+
+  // значение внешнего ключа должно существовать в родительской таблице
+  void check_parent_exists(const ForeignKey &fk, const Value &value) const;
+  // на строки родителя, которые удаляются, не должны ссылаться дочерние
+  void check_not_referenced(const std::string &parent_name,
+                            const std::optional<Condition> &cond) const;
+
   std::filesystem::path path_;
   std::filesystem::path catalog_path_;
   std::unordered_map<std::string, Table> tables_;
 };
 
-#endif
+#endif // DATABASE_H

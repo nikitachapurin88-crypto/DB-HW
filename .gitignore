@@ -4,3 +4,4 @@ minidb_tests
 minidb_bench
 minidb_backup/
 *.o
+DEFENSE.md
